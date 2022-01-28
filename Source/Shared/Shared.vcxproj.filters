@@ -27,6 +27,9 @@
     <ClCompile Include="ThreadPool\ThreadPool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Networking\IPEndpoint.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Messages\ChatMessage.h">
@@ -51,6 +54,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ThreadPool\TemplatedWork.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Networking\IPEndpoint.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -3,10 +3,10 @@
 #include "..\Shared\Messages\ChatMessage.h"
 #include "..\Shared\Messages\MessageUtils.h"
 
-ONet::Client::Client(const unsigned short aID, const std::string& aName)
-	:myID(aID), myName(aName)
+ONet::Client::Client(const unsigned int aPort, const std::string& aAdress, const std::string& aName)
+	:myName(aName)
 {
-	myID++;
+	myIPEndpoint = IPEndPoint(aAdress, aPort);
 }
 
 bool ONet::Client::Init()
@@ -20,81 +20,109 @@ bool ONet::Client::Init()
 		assert(false && "Failed to init myServerAddress_Winsock");
 	}
 
-	//Create a hint structure for myServerAddress.
-	myServerAddress.sin_family = AF_INET;
-	myServerAddress.sin_port = htons(54000);
-	int myServerAddressLength = sizeof(myServerAddress);
+	bool result = ConnectToServer();
+	myIsActive = true;
 
-	inet_pton(AF_INET, "127.0.0.1", &myServerAddress.sin_addr);
+	ZeroMemory(myReceiveBuffer, DEFAULT_PACKET_SIZE);
+	ZeroMemory(mySendBuffer, DEFAULT_PACKET_SIZE);
 
-	//Socket creation.
-	mySocket = socket(AF_INET, SOCK_DGRAM, 0);
-
-	int success = connect(mySocket, (sockaddr*)&myServerAddress, sizeof(myServerAddress));
-
-	if (success == SOCKET_ERROR)
-	{
-		std::cout << "Failed to connect to serverAddress: " << WSAGetLastError() << std::endl;
-		return false;
-	}
-	else
-	{
-		std::cout << "Succesfully connected to ServerAddress: " << myServerAddress.sin_port << std::endl;
-	}
-
-	return true;
+	return result;
 }
 
 void ONet::Client::Tick()
 {
 	int serverAddressLength = sizeof(myServerAddress);
 
+	//char buffer[DEFAULT_PACKET_SIZE];
 	const int bufferSize = sizeof(ChatMessage);
-	char msgOutBuffer[bufferSize];
-	ZeroMemory(msgOutBuffer, bufferSize);
+	//char msgOutBuffer[bufferSize];
 
-	while (myName.size() < 5)
+	while (myIsActive && myHasEstablishedConnection)
 	{
-		std::cin >> myName;
+		std::cout << "CLIENT_TICK" << std::endl;
+
+		ZeroMemory(mySendBuffer, DEFAULT_PACKET_SIZE);
+		std::string temp = "";
+		std::cin >> temp;
 		std::cin.clear();
 
-		ChatMessage msg;
-		msg.SetMessage(myName);
-		memcpy(msgOutBuffer, &msg, bufferSize);
+		//ZeroMemory(buffer, DEFAULT_PACKET_SIZE);
 
-		int sendSuccess = sendto(mySocket, msgOutBuffer, bufferSize, 0, (sockaddr*)&myServerAddress, serverAddressLength);
+		ChatMessage msg(eMessageType::Chat);
+		msg.SetMessage(myName + " says : " + temp);
+		memcpy(mySendBuffer, &msg, (int)DEFAULT_PACKET_SIZE);
+
+		const int sendSuccess = sendto(mySocket, mySendBuffer, bufferSize, 0, (sockaddr*)&myServerAddress, serverAddressLength);
 		if (sendSuccess == SOCKET_ERROR)
 		{
 			std::cout << "Failed to send client data" << WSAGetLastError() << std::endl;
 		}
 		else
 		{
+			ZeroMemory(mySendBuffer, DEFAULT_PACKET_SIZE);
 			std::cout << "Successfully sent packet to: " << myServerAddress.sin_port << std::endl;
 		}
+	}
+}
 
-		ZeroMemory(msgOutBuffer, bufferSize);
+void ONet::Client::ReceiveData()
+{
+	ZeroMemory(myReceiveBuffer, DEFAULT_PACKET_SIZE);
 
-		int bytesIn = recvfrom(mySocket, msgOutBuffer, bufferSize, 0, (sockaddr*)&myServerAddress, &serverAddressLength);
+	int serverAddressLength = sizeof(myServerAddress);
+	const int bytesIn = recvfrom(mySocket, myReceiveBuffer, DEFAULT_PACKET_SIZE, 0, (sockaddr*)&myServerAddress, &serverAddressLength);
 
-		//Display message and client info.
+	if (bytesIn > 0)
+	{
+		myHasReceived = true;
 		char serverAddressIP[256];
 		ZeroMemory(serverAddressIP, 256);
-
-		//AF_INET == IPV4., get information out of sin_addr, which is in a series of bytes, (4 bytes in our case) and convert to string (which is 10 bytes).
-		//Interprets data, ntop = number to string, gets our client IP as a string.
 		inet_ntop(AF_INET, &myServerAddress.sin_addr, serverAddressIP, 256);
 
 		if (bytesIn == SOCKET_ERROR)
 		{
 			std::cout << "Error receiving from myServerAddress: " << WSAGetLastError() << std::endl;
 		}
-		else
+
+		if (myReceiveBuffer[0] == static_cast<int>(eMessageType::CLIENT_Join))
 		{
-			std::cout << "Message received from: " << serverAddressIP << std::endl << ": " << Utils::DeSerializeMessageString(msgOutBuffer) << std::endl;
+			myHasEstablishedConnection = true;
+		}
+		else if (myReceiveBuffer[0] == static_cast<int>(eMessageType::Chat))
+		{
+			std::cout << "Message received from: " << serverAddressIP << std::endl << ": " << Utils::DeSerializeMessageString(myReceiveBuffer) << std::endl;
 		}
 	}
+}
 
-	//close socket.
+bool ONet::Client::ShutDown()
+{
 	closesocket(mySocket);
+	return true;
+}
 
+bool ONet::Client::ConnectToServer()
+{
+	//Create a hint structure for myServerAddress.
+
+	myServerAddress.sin_family = AF_INET;
+	myServerAddress.sin_port = htons(myIPEndpoint.GetPort());
+	//myServerAddress.sin_port = htons(port);
+	const int serverAddressLength = sizeof(myServerAddress);
+
+	//std::string address = "127.0.0.1";
+	inet_pton(AF_INET, myIPEndpoint.GetAdress().c_str(), &myServerAddress.sin_addr);
+
+	//Socket creation.
+	mySocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
+	ChatMessage msg(eMessageType::CLIENT_Join);
+	msg.SetMessage(myName + "Connecting to server..");
+
+	char buffer[DEFAULT_PACKET_SIZE];
+	memcpy(&buffer, &msg, DEFAULT_PACKET_SIZE);
+
+	const int sendSuccess = sendto(mySocket, buffer, DEFAULT_PACKET_SIZE, 0, (sockaddr*)&myServerAddress, serverAddressLength);
+
+	return true;
 }

@@ -18,6 +18,9 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <iostream>
+#include "..\Shared\Networking\NetworkUtils.h"
+#include "..\Shared\Networking\IPEndpoint.h"
+#include <atomic>
 
 namespace ONet
 {
@@ -32,21 +35,30 @@ namespace ONet
 	class Client
 	{
 	public:
-		Client(const unsigned short aID = 0, const std::string& aName = "None");
+		Client(const unsigned int aPort = 0, const std::string& aAdress = "127.0.0.1", const std::string& aName = "None");
 		bool Init();
 		void Tick();
-
 
 		inline const std::string& GetName() const { return myName; }
 		inline const bool GetIsActive() const { return myIsActive; }
 		inline void SetIsActive(const bool aIsActive) { myIsActive = aIsActive; }
+		
+		void ReceiveData();
+		bool ShutDown();
+
 	private:
+		bool ConnectToServer();
+
+		IPEndPoint myIPEndpoint;
+		std::atomic<bool> myHasEstablishedConnection = false;
+		std::atomic<bool> myHasReceived = false;
 		eClientType myClientType = eClientType::Autonomous;
 		std::string myName = "";
 		unsigned short myID = 0;
-		bool myIsActive = true;
+		bool myIsActive = false;
 		SOCKET mySocket = INVALID_SOCKET;
 		sockaddr_in myServerAddress;
-
+		char mySendBuffer[DEFAULT_PACKET_SIZE];
+		char myReceiveBuffer[DEFAULT_PACKET_SIZE];
 	};
 }

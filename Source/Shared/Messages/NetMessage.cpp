@@ -2,8 +2,7 @@
 #include <assert.h>
 
 
-ONet::NetMessage::NetMessage(size_t aSize, const eMessageType& aMessageType)
+ONet::NetMessage::NetMessage(const eMessageType& aMessageType)
 	:myMsgType(aMessageType)
 {
-
 }

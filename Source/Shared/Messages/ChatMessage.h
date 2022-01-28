@@ -8,7 +8,7 @@ namespace ONet
 	class ChatMessage : public NetMessage
 	{
 	public:
-		ChatMessage();
+		ChatMessage(const eMessageType& aMessageType = eMessageType::Chat);
 		void SetMessage(const std::string& aMessage);
 	protected:
 

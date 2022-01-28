@@ -1,9 +1,9 @@
 #include "ChatMessage.h"
 #include <assert.h>
 
-ONet::ChatMessage::ChatMessage()
+ONet::ChatMessage::ChatMessage(const eMessageType& aMessageType)
+	:NetMessage(aMessageType)
 {
-	myMsgType = eMessageType::Chat;
 }
 
 void ONet::ChatMessage::SetMessage(const std::string& aMessage)

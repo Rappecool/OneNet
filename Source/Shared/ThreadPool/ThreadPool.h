@@ -37,7 +37,10 @@ namespace Threading
 
 	enum class eWorkType
 	{
-		Listen,
+		ReceiveClientData,
+		ReceiveServerData,
+		Tick_SERVER,
+		TICK_CLIENT,
 		Send,
 		COUNT
 	};

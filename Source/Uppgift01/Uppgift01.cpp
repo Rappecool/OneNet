@@ -11,12 +11,28 @@ int main()
 
 	while (true)
 	{
+		//Thread to handle client connections.
+		threadPool.AddASyncWork([&]()
+		{
+			server.ReceiveClientData();
+		},
+		Threading::eWorkType::ReceiveClientData);
+
+		//Thread to update server game logic.
 		threadPool.AddASyncWork([&]()
 		{
 				server.Tick();
 		},
-		Threading::eWorkType::Listen);
+		Threading::eWorkType::Tick_SERVER);
 
+		////Thread to handle incoming client data.
+		//threadPool.AddASyncWork([&]()
+		//{
+		//		server.ReceiveClientData();
+		//},
+		//Threading::eWorkType::ReceiveClientData);
+
+		//Update threadpool.
 		threadPool.DoAllASyncWork();
 		threadPool.UpdateAsyncedWork();
 	}
@@ -26,6 +42,7 @@ int main()
 	{
 		threadPool.DoAllASyncWork();
 		std::this_thread::yield();
+		server.ShutDown();
 	}
 
 }

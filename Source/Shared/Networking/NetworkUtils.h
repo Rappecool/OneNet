@@ -2,7 +2,7 @@
 #include <memory>
 #include <WinSock2.h>
 
-#define DEFAULT_PACKET_SIZE = 512
+#define DEFAULT_PACKET_SIZE 524
 
 namespace ONet
 {

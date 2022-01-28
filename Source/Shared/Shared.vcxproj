@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="Messages\ChatMessage.cpp" />
     <ClCompile Include="Messages\NetMessage.cpp" />
+    <ClCompile Include="Networking\IPEndpoint.cpp" />
     <ClCompile Include="ThreadPool\ThreadPool.cpp" />
     <ClCompile Include="ThreadPool\Worker.cpp" />
   </ItemGroup>
@@ -28,6 +29,7 @@
     <ClInclude Include="Messages\ChatMessage.h" />
     <ClInclude Include="Messages\MessageUtils.h" />
     <ClInclude Include="Messages\NetMessage.h" />
+    <ClInclude Include="Networking\IPEndpoint.h" />
     <ClInclude Include="Networking\NetworkUtils.h" />
     <ClInclude Include="ThreadPool\TemplatedWork.h" />
     <ClInclude Include="ThreadPool\ThreadPool.h" />

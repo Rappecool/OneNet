@@ -22,7 +22,7 @@ namespace ONet
 	class NetMessage
 	{
 	public:
-		NetMessage(size_t aSize = MAX_BUFFER_SIZE, const eMessageType& aMessageType = eMessageType::None);
+		NetMessage(const eMessageType& aMessageType = eMessageType::None);
 
 	protected:
 		eMessageType myMsgType = eMessageType::None;
