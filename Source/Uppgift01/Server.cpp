@@ -77,7 +77,9 @@ void ONet::Server::Tick()
 	}
 
 	std::cout << "SERVER TICK" << std::endl;
-	//std::cout << "Accepted packet: " << static_cast<unsigned int>(myBuffer[0]) <<  ": " << Utils::DeSerializeMessageString(myBuffer) << std::endl;
+
+	char buffer[DEFAULT_PACKET_SIZE];
+
 
 	for (unsigned int messageIndex = 0; messageIndex < myReceivedMessages.size(); messageIndex++)
 	{
@@ -91,15 +93,22 @@ void ONet::Server::Tick()
 			client.sin_port = myClients[clientIndex].GetPort();
 
 			int bufferSize = sizeof(ChatMessage);
+			//ChatMessage msg;
+			//msg.SetMessage(&myBuffer[0]);
 
-			int sendSuccess = sendto(myListenSocket, myBuffer, bufferSize, 0, (sockaddr*)&client, clientLength);
+			ChatMessage temp = *reinterpret_cast<ChatMessage*>(&myReceivedMessages.back());
+			ZeroMemory(buffer, bufferSize);
+			memcpy(buffer, &temp, bufferSize);
+
+			int sendSuccess = sendto(myListenSocket, buffer, bufferSize, 0, (sockaddr*)&client, clientLength);
+			//int sendSuccess = sendto(myListenSocket, temp.GetBuffer(), bufferSize, 0, (sockaddr*)&client, clientLength);
 			if (sendSuccess == SOCKET_ERROR)
 			{
-				std::cout << "Failed to send client data: " << WSAGetLastError() << std::endl;
+				std::cout << "Failed to send client data to : " << myClientNames[clientIndex] << "." << WSAGetLastError() << std::endl;
 			}
 			else
 			{
-				std::cout << "Successfully sent packet to: " << myClients[clientIndex].GetPort() << std::endl;
+				std::cout << "Successfully sent packet to: " << myClients[clientIndex].GetPort() << myClientNames[clientIndex] << std::endl;
 			}
 		}
 
@@ -116,54 +125,103 @@ void ONet::Server::ReceiveClientData()
 	sockaddr_in client;
 	int clientLength = sizeof(client);
 	ZeroMemory(&client, clientLength);
+	ZeroMemory(myBuffer, DEFAULT_PACKET_SIZE);
 
 	const int bufferSize = sizeof(ChatMessage);
 
-	std::cout << "ReceiveData()" << std::endl;
+	std::cout << "SERVER_ReceiveData()" << std::endl;
 
 	//ZeroMemory(&myBuffer, bufferSize);
 	const int bytesIn = recvfrom(myListenSocket, myBuffer, bufferSize, 0, (sockaddr*)&client, &clientLength);
-
-	if (bytesIn <= 0)
-	{
-		return;
-	}
 
 	if (bytesIn == SOCKET_ERROR)
 	{
 		std::cout << "Error receiving from client: " << WSAGetLastError() << std::endl;
 	}
 
+	if (bytesIn <= 0)
+	{
+		return;
+	}
+
 	else if (static_cast<eMessageType>(myBuffer[0]) == eMessageType::CLIENT_Join)
 	{
-		std::cout << "Found new client! ID: " << myNrOfClients << std::endl;
-		IPEndPoint fromClient(std::to_string(client.sin_addr.S_un.S_addr), client.sin_port);
+		ChatMessage msg = *reinterpret_cast<ChatMessage*>(&myBuffer);
+		myReceivedMessages.push(msg);
+		HandleClientJoin(client, msg);
 
-		bool clientExists = false;
-		for (const auto& client : myClients)
-		{
-			if (client.second == fromClient)
-			{
-				clientExists = true;
-			}
-		}
-
-		if (!clientExists)
-		{
-			myClients.try_emplace(myNrOfClients++, fromClient);
-		}
-
-		//TODO: Make interpret cast of message to store messages instead of char[].
+	}
+	else if (static_cast<eMessageType>(myBuffer[0]) == eMessageType::CLIENT_Leave)
+	{
+		HandleClientLeave(client);
 	}
 
 	else if (static_cast<eMessageType>(myBuffer[0]) == eMessageType::Chat)
 	{
 		std::cout << "Accepted packet: " << static_cast<unsigned int>(myBuffer[0]) << ": " << Utils::DeSerializeMessageString(myBuffer) << std::endl;
-	}
+
 		ChatMessage msg = *reinterpret_cast<ChatMessage*>(&myBuffer);
 		myReceivedMessages.push(msg);
+	}
 
 	myHasReceived = true;
+}
+
+void ONet::Server::HandleClientJoin(sockaddr_in& client, const ChatMessage& aMsg)
+{
+	assert(myNrOfClients < myMaxNrOfClients && "Exceeded max nr of clients!");
+	std::cout << "Found new client! ID: " << myNrOfClients << std::endl;
+	IPEndPoint fromClient(std::to_string(client.sin_addr.S_un.S_addr), client.sin_port);
+
+	char buffer[DEFAULT_PACKET_SIZE];
+	ZeroMemory(buffer, DEFAULT_PACKET_SIZE);
+	memcpy(buffer, &aMsg, DEFAULT_PACKET_SIZE);
+
+	const auto clientName = Utils::DeSerializeMessageString(buffer);
+
+	bool clientExists = false;
+	for (const auto& client : myClients)
+	{
+		if (client.second == fromClient)
+		{
+			clientExists = true;
+		}
+	}
+
+	if (!clientExists)
+	{
+		myClients.try_emplace(myNrOfClients++, fromClient);
+		myClientNames.try_emplace(myNrOfClients, clientName);
+	}
+}
+
+void ONet::Server::HandleClientLeave(sockaddr_in& client)
+{
+	IPEndPoint fromClient(std::to_string(client.sin_addr.S_un.S_addr), client.sin_port);
+
+	bool clientExists = false;
+	for (int clientIndex = myClients.size() - 1; clientIndex >= 0; clientIndex--)
+	{
+		if (myClients[clientIndex] == fromClient)
+		{
+			clientExists = true;
+			//TODO: TEst
+			ChatMessage clientLeaveMsg;
+			clientLeaveMsg.SetMessage("Client " + myClientNames[clientIndex] + " left. Index: " + std::to_string((myNrOfClients)));
+			myReceivedMessages.push(clientLeaveMsg);
+
+			myClients.erase(clientIndex);
+			myClientNames.erase(clientIndex);
+			std::cout << "Successfully removed client: " << myClientNames[clientIndex] << std::endl;
+			myNrOfClients--;
+			
+			continue;
+		}
+	}
+	if (!clientExists)
+	{
+		std::cout << "Tried removing client that doesn't exist." << std::endl;
+	}
 }
 
 bool ONet::Server::ShutDown()
@@ -179,38 +237,3 @@ bool ONet::Server::ShutDown()
 
 	return false;
 }
-
-bool ONet::Server::AcceptClient(const unsigned int aClientID)
-{
-	SOCKET clientSocket;
-
-	clientSocket = socket(AF_INET, SOCK_DGRAM, 0);
-
-	if (clientSocket == INVALID_SOCKET)
-	{
-		closesocket(clientSocket);
-		return false;
-	}
-
-	//myClientIDs.insert(std::pair<unsigned int, SOCKET>(aClientID, clientSocket));
-	return true;
-}
-
-//int ONet::Server::ReceiveData(const unsigned int aClientID, char* aRecvBuffer)
-//{
-//	if (myClientIDs.find(aClientID) != myClientIDs.end())
-//	{
-//		SOCKET currentSocket = myClientIDs[aClientID];
-//		const int result = ONet::NetworkService::ReceiveData(currentSocket, aRecvBuffer, MAX_PACKET_SIZE);
-//
-//		if (result == 0)
-//		{
-//			closesocket(currentSocket);
-//			myClientIDs.erase(currentSocket);
-//		}
-//
-//		return result;
-//	}
-//
-//	return 0;
-//}

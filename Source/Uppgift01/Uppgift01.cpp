@@ -5,7 +5,6 @@ int main()
 {
 	auto& threadPool = Threading::ThreadPool::GetInstance();
 	threadPool.Init();
-	//startup Winsock.
 	ONet::Server server;
 	server.Init();
 
@@ -24,13 +23,6 @@ int main()
 				server.Tick();
 		},
 		Threading::eWorkType::Tick_SERVER);
-
-		////Thread to handle incoming client data.
-		//threadPool.AddASyncWork([&]()
-		//{
-		//		server.ReceiveClientData();
-		//},
-		//Threading::eWorkType::ReceiveClientData);
 
 		//Update threadpool.
 		threadPool.DoAllASyncWork();

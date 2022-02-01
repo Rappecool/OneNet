@@ -49,6 +49,10 @@ namespace ONet
 	private:
 		bool ConnectToServer();
 
+		//TODO: Add client knows about other clients, being able to send to specific client.
+		//TODO: ADD RPC.
+
+		bool myWantsToQuit = false;
 		IPEndPoint myIPEndpoint;
 		std::atomic<bool> myHasEstablishedConnection = false;
 		std::atomic<bool> myHasReceived = false;

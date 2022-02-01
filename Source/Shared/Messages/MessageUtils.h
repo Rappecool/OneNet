@@ -21,5 +21,11 @@ namespace ONet
 
 			return message;
 		}
+
+		static const std::string CreateStringFromBuffer(const char aBuffer[], const short aBufferSize = sizeof(ChatMessage))
+		{
+
+
+		}
 	}
 }

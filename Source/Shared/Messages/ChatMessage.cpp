@@ -12,3 +12,8 @@ void ONet::ChatMessage::SetMessage(const std::string& aMessage)
 	myBufferLength = sizeof(char) * aMessage.size();
 	memcpy(myBuffer, &aMessage[0], myBufferLength);
 }
+
+void ONet::ChatMessage::SetMessage(char* aBuffer)
+{
+	memcpy(myBuffer, aBuffer, MAX_NETMESSAGE_SIZE);
+}

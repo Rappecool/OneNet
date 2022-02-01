@@ -32,24 +32,27 @@ bool ONet::Client::Init()
 void ONet::Client::Tick()
 {
 	int serverAddressLength = sizeof(myServerAddress);
-
-	//char buffer[DEFAULT_PACKET_SIZE];
 	const int bufferSize = sizeof(ChatMessage);
-	//char msgOutBuffer[bufferSize];
 
-	while (myIsActive && myHasEstablishedConnection)
+	while (myIsActive && myHasEstablishedConnection && !myWantsToQuit)
 	{
 		std::cout << "CLIENT_TICK" << std::endl;
 
 		ZeroMemory(mySendBuffer, DEFAULT_PACKET_SIZE);
-		std::string temp = "";
-		std::cin >> temp;
+		std::string inString = "";
+		std::cin >> inString;
 		std::cin.clear();
 
 		//ZeroMemory(buffer, DEFAULT_PACKET_SIZE);
 
 		ChatMessage msg(eMessageType::Chat);
-		msg.SetMessage(myName + " says : " + temp);
+		if (inString == "quit")
+		{
+			msg = ChatMessage(eMessageType::CLIENT_Leave);
+			myWantsToQuit = true;
+		}
+
+		msg.SetMessage(myName + " says : " + inString);
 		memcpy(mySendBuffer, &msg, (int)DEFAULT_PACKET_SIZE);
 
 		const int sendSuccess = sendto(mySocket, mySendBuffer, bufferSize, 0, (sockaddr*)&myServerAddress, serverAddressLength);
@@ -61,6 +64,12 @@ void ONet::Client::Tick()
 		{
 			ZeroMemory(mySendBuffer, DEFAULT_PACKET_SIZE);
 			std::cout << "Successfully sent packet to: " << myServerAddress.sin_port << std::endl;
+		}
+
+		//Check each loop if we want to quit, then set not active to not call thread tick.
+		if (myWantsToQuit)
+		{
+			myIsActive = false;
 		}
 	}
 }
@@ -87,10 +96,17 @@ void ONet::Client::ReceiveData()
 		if (myReceiveBuffer[0] == static_cast<int>(eMessageType::CLIENT_Join))
 		{
 			myHasEstablishedConnection = true;
+			std::cout << "Client has established connection" << std::endl;
 		}
+
 		else if (myReceiveBuffer[0] == static_cast<int>(eMessageType::Chat))
 		{
 			std::cout << "Message received from: " << serverAddressIP << std::endl << ": " << Utils::DeSerializeMessageString(myReceiveBuffer) << std::endl;
+		}
+
+		else
+		{
+			std::cout << "Client received unhandled message" << std::endl;
 		}
 	}
 }
@@ -117,7 +133,7 @@ bool ONet::Client::ConnectToServer()
 	mySocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
 	ChatMessage msg(eMessageType::CLIENT_Join);
-	msg.SetMessage(myName + "Connecting to server..");
+	msg.SetMessage(myName);
 
 	char buffer[DEFAULT_PACKET_SIZE];
 	memcpy(&buffer, &msg, DEFAULT_PACKET_SIZE);

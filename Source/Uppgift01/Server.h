@@ -46,23 +46,31 @@ namespace ONet
 		void ReceiveClientData();
 		bool ShutDown();
 
-		bool AcceptClient(const unsigned int aClientID);
-		//int ReceiveData(const unsigned int aClientID, char* aRecvBuffer);
+		//Send to client funcs.
+		bool SendToOne(const unsigned int aClientIndex);
+		bool SendToAllButOne(const unsigned int aClientIndex);
+		bool SendToAll(const IPEndPoint& aClientEndPoint);
 
+		//TODO: ADD RPC.
 	private:
-		//Socket to listen for new connections.
-		std::atomic<bool> myHasReceived = false;
-		SOCKET myListenSocket = -1;
+		void HandleClientJoin(sockaddr_in& client, const ChatMessage& aMsg);
+		void HandleClientLeave(sockaddr_in& client);
+
 		std::unordered_map<unsigned int, IPEndPoint> myClients;
-		unsigned int myNrOfClients = 0;
-		unsigned short myMaxNrOfClients = 10;
+		std::unordered_map<unsigned int, std::string> myClientNames;
+		//Stores all messages we receive.
+		std::queue<NetMessage> myReceivedMessages;
+		//Socket to listen for new connections.
+		SOCKET myListenSocket = -1;
+		std::atomic<bool> myHasReceived = false;
+		char myBuffer[DEFAULT_PACKET_SIZE];
 		bool myIsFull = false;
 		bool myIsActive = true;
 		unsigned int myID = 0;
-		char myBuffer[DEFAULT_PACKET_SIZE];
+		unsigned int myNrOfClients = 0;
 		int myBufferSize = -1;
+		unsigned short myMaxNrOfClients = 10;
 
-		std::queue<NetMessage> myReceivedMessages;
 
 		const unsigned int myTicksPerSecond = 60;
 		const float myClientTimeOut = 10.0f;

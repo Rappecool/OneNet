@@ -24,6 +24,7 @@ namespace ONet
 	public:
 		NetMessage(const eMessageType& aMessageType = eMessageType::None);
 
+		inline const char* GetBuffer() const { return myBuffer; }
 	protected:
 		eMessageType myMsgType = eMessageType::None;
 		unsigned short myID = 1;

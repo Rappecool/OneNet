@@ -10,6 +10,7 @@ namespace ONet
 	public:
 		ChatMessage(const eMessageType& aMessageType = eMessageType::Chat);
 		void SetMessage(const std::string& aMessage);
+		void SetMessage(char* aBuffer);
 	protected:
 
 	};
